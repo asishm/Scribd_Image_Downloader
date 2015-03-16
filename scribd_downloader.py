@@ -5,17 +5,9 @@ import re
 import os
 import img2pdf
 
-# to do
-# 1. handle no response aka timeouts
-# 2. naive check if all files are downloaded
-
 # works only when the scribd document is composed solely of images (.jpg)
 
-scribd_link = None
-
 img_folder = './images'
-
-pdf_file_name = '*.pdf'
 
 DEBUG = True
 
@@ -113,8 +105,8 @@ def convert_to_pdf(img_list, output_folder, scribd_link, pdf_file_name):
     with open(os.path.join(output_folder, pdf_file_name), 'wb') as f:
         f.write(pdf_bytes)
 
-def get_pdf(scribd_link = scribd_link, pdf_file_name = pdf_file_name,
-            img_folder = img_folder, output_folder = output_folder):
+def get_pdf(scribd_link, pdf_file_name, img_folder = img_folder,
+            output_folder = output_folder):
     
     img_list = get_images(scribd_link, img_folder, pdf_file_name)
     convert_to_pdf(img_list, output_folder, scribd_link, pdf_file_name+'.pdf')
