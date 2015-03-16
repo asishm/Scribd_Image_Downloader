@@ -9,7 +9,6 @@ import img2pdf
 # 1. handle no response aka timeouts
 # 2. naive check if all files are downloaded
 
-# assumes img folder is empty and has no subdirectories
 # works only when the scribd document is composed solely of images (.jpg)
 
 scribd_link = None
@@ -50,7 +49,7 @@ def write_image(img_file, img_link):
     f.close()
     
 
-def get_images(scribd_link, output_folder):
+def get_images(scribd_link, output_folder, pdf_file_name):
     global json_list, img_links
 
     scribd_conn = requests.get(scribd_link)
@@ -63,13 +62,16 @@ def get_images(scribd_link, output_folder):
 
     n = str(len(str(len(json_list))))
 
+    image_list = set()
+
     print len(json_list), 'files'
     print 'images downloaded to {}'.format(output_folder)
 
     for i, link in enumerate(json_list):
 
-        img_name = '{:0{k}d}.jpg'.format(i+1, k = n)
+        img_name = '{}{:0{k}d}.jpg'.format(pdf_file_name,i+1, k = n)
         img_file = os.path.join(output_folder, img_name)
+        image_list.add(img_file)
         if os.path.exists(img_file):
             print img_file, 'exists'
             continue
@@ -101,14 +103,12 @@ def get_images(scribd_link, output_folder):
 
         
         print 'Completed img {} \n'.format(i+1)
+    return sorted(list(image_list))
 
 
-def convert_to_pdf(img_folder, output_folder, scribd_link, pdf_file_name):
+def convert_to_pdf(img_list, output_folder, scribd_link, pdf_file_name):
 
-    file_names = os.walk(img_folder).next()[2]
-    files = [os.path.join(img_folder, name) for name in file_names]
-
-    pdf_bytes = img2pdf.convert(files, dpi = 100)
+    pdf_bytes = img2pdf.convert(img_list, dpi = 100)
 
     with open(os.path.join(output_folder, pdf_file_name), 'wb') as f:
         f.write(pdf_bytes)
@@ -116,5 +116,5 @@ def convert_to_pdf(img_folder, output_folder, scribd_link, pdf_file_name):
 def get_pdf(scribd_link = scribd_link, pdf_file_name = pdf_file_name,
             img_folder = img_folder, output_folder = output_folder):
     
-    get_images(scribd_link, img_folder)
-    convert_to_pdf(img_folder, output_folder, scribd_link, pdf_file_name)
+    img_list = get_images(scribd_link, img_folder, pdf_file_name)
+    convert_to_pdf(img_list, output_folder, scribd_link, pdf_file_name+'.pdf')
