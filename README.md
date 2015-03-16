@@ -22,5 +22,6 @@ To use this script, you can either:
 - change the variable values inside the script
 - run it from the command line interface or on your IDE.
 
+To use it on your IDE,
 
     get_pdf(scribd_url, pdf_file_name, img_directory, output_directory)
