@@ -4,6 +4,9 @@ import requests
 import re
 import os
 import img2pdf
+from multiprocessing import Process, Manager
+import sys
+
 
 # works only when the scribd document is composed solely of images (.jpg)
 
@@ -20,13 +23,11 @@ def sort_json(link):
     if 'jpg' in link:
         pat = re.compile(r'([0-9]*)-.*jpg')
         s = link.index('jpg')-16
-        val = re.search(pat, link[s:])
-        return int(val.groups()[0])
     elif 'jsonp' in link:
         pat = re.compile(r'([0-9]*)-.*jsonp')
         s = link.index('jsonp')-16
-        val = re.search(pat, link[s:])
-        return int(val.groups()[0])
+    val = re.search(pat, link[s:])
+    return int(val.groups()[0])
 
 def write_image(img_file, img_link):
     f = open(img_file, 'wb')
@@ -41,8 +42,9 @@ def write_image(img_file, img_link):
     f.close()
     
 
-def get_images(scribd_link, output_folder, pdf_file_name):
-    global json_list, img_links
+def get_images(scribd_link):
+
+    print 'at get_images'
 
     scribd_conn = requests.get(scribd_link)
 
@@ -52,61 +54,100 @@ def get_images(scribd_link, output_folder, pdf_file_name):
 
     json_list = sorted(json_list, key = sort_json)
 
-    n = str(len(str(len(json_list))))
+    #n = str(len(str(len(json_list))))
 
+    return json_list
+
+def get_img_links(json_list):
+
+    print 'at get_img_links'
+    img_links = []
+    
+    for i, link in enumerate(json_list):
+        if i%50 ==0:
+            print i
+        if 'jpg' in link:
+            img_links.append(link)
+        elif 'jsonp' in link:
+            while 1:
+                try:
+                    json_conn = requests.get(link)
+                except requests.ConnectionError:
+                    print 'breaking at getting json',
+                    continue
+                break
+            resp = json_conn.content
+
+            try:
+                img_link = re.findall(img_pattern, resp)[0]
+            except IndexError:
+                print 'no img link'
+                continue
+
+            img_links.append(img_link)
+
+    #n = str(len(str(len(img_links))))
+    return img_links
+
+def download_img(img_links, start_index, end_index, img_folder, pdf_file_name, f):
+    
+    print 'at downloading_img'
     image_list = set()
 
-    print len(json_list), 'files'
-    print 'images downloaded to {}'.format(output_folder)
+    print len(img_links), 'files'
+    print 'images downloaded to {}'.format(img_folder)
 
-    for i, link in enumerate(json_list):
+    i = start_index
+    end_index = min(end_index, len(img_links))
+    n = str(len((str(len(img_links)))))
+    while i < end_index:
 
         img_name = '{}{:0{k}d}.jpg'.format(pdf_file_name,i+1, k = n)
-        img_file = os.path.join(output_folder, img_name)
+        img_file = os.path.join(img_folder, img_name)
         image_list.add(img_file)
         if os.path.exists(img_file):
             print img_file, 'exists'
             continue
-
-        if 'jpg' in link:
-            write_image(img_file, link)
-            print 'jpg there'
-            continue
-                     
-        print 'Downloading img {}'.format(i+1)
-        while 1:
-            try:
-                json_conn = requests.get(link)
-            except requests.ConnectionError:
-                print 'break at getting json',
-                continue
-            break
-        resp = json_conn.content
-        try:
-            img_link = re.findall(img_pattern, resp)[0]
-        except IndexError:
-            print 'no img link'
-            continue
-
-        if DEBUG:
-            print img_link
         
-        write_image(img_file, img_link)
-
+        write_image(img_file, img_links[i])
+        i += 1
         
         print 'Completed img {} \n'.format(i+1)
-    return sorted(list(image_list))
+    f.extend(image_list)
 
 
-def convert_to_pdf(img_list, output_folder, scribd_link, pdf_file_name):
+def convert_to_pdf(img_list, output_folder, pdf_file_name):
 
     pdf_bytes = img2pdf.convert(img_list, dpi = 100)
 
     with open(os.path.join(output_folder, pdf_file_name), 'wb') as f:
         f.write(pdf_bytes)
 
-def get_pdf(scribd_link, pdf_file_name, img_folder = img_folder,
-            output_folder = output_folder):
+if __name__ == "__main__":
+    global f, image_list
+    processes = []
+    a = raw_input('''scribd link, pdf file name, \
+img_folder, out_folder separated by spaces \n''')
+    print a.split()
+    scribd, pdf, img_folder, out_folder = a.split()
+
+    img_links = get_img_links(get_images(scribd))
+    n = len(img_links)
+    print 'image links scraped', n
+    manager = Manager()
+    f = manager.list()
     
-    img_list = get_images(scribd_link, img_folder, pdf_file_name)
-    convert_to_pdf(img_list, output_folder, scribd_link, pdf_file_name+'.pdf')
+    for i in range(5):
+        process = Process(target = download_img, args =
+                          [img_links, i*n/4, (i+1)*n/4, img_folder, pdf, f])
+        print 'process {} started'.format(i)
+        process.start()
+        processes.append(process)
+
+    for process in processes:
+        process.join()
+    print 'image list secured'
+    image_list = sorted(list(f))
+
+    print 'converting'
+    convert_to_pdf(image_list, out_folder, pdf+'.pdf')

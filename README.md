@@ -4,6 +4,8 @@ Sometimes, you really want to download a file off of Scribd, but you find the do
 
 If all the files in the Scribd document are images, more specifically .jpg files, this script will help you download all the images and convert them to a pdf.
 
+This script uses **multiprocessing** to speed up the downloading process. However, it doesn't account for any rate limits that might exist while downloading.
+
 # Dependencies
 
 This script requires the modules **requests** and **img2pdf**.
@@ -17,11 +19,14 @@ These can be downloaded from Pypi by using the following commands through the co
 
 This module doesn't check for correctness of the Scribd link, or the existence of the `img_folder` and `output_folder` directories.
 
-To use this script, you can either:
+This script is to be run at the command line by running
 
-- change the variable values inside the script
-- run it from the command line interface or on your IDE.
+    python scribd_downloader1.py
 
-To use it on your IDE,
+from the folder the script resides in.
 
-    get_pdf(scribd_url, pdf_file_name, img_directory, output_directory)
+Enter the scribd link, pdf file name, path of the directory to which the images will be downloaded, path of the directory where the pdf will be created separated by spaces
+
+Enter the number of processes that will be running.
+
+You can change the `DEBUG` variable inside the script to True, to see a list of images that have downloaded (updated realtime).
