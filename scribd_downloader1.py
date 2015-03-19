@@ -70,7 +70,7 @@ def get_img_url(jsonp_link):
         try:
             json_conn = requests.get(jsonp_link)
         except requests.ConnectionError:
-            print 'breaking at getting json',
+            print 'breaking at getting json', jsonp_link
             continue
         break
     resp = json_conn.content
