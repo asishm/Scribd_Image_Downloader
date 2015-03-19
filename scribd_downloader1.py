@@ -5,8 +5,6 @@ import re
 import os
 import img2pdf
 from multiprocessing import Process, Manager
-import sys
-from math import ceil
 import time
 
 json_pattern = re.compile(r'https.*scribdassets.*jsonp')
